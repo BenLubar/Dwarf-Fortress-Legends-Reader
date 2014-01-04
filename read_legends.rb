@@ -54,6 +54,40 @@ def write_figure data
 
   open "fig-#{data[/^(.*?)\s+was\s+a\b/, 1].paramcase}.html", "w" do |f|
     f.puts "<p>"
+
+    line_accum = ""
+
+    print_accum = proc do
+      line_accum.strip!
+      if first_text_printed
+        line_accum.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured)((\s+the\s+[^A-Z]+)([A-Z].*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z].*?))?(\s+in\s+([A-Z].*?))?\.\z/ do
+          of_ent = ""
+          of_ent = " of <a href=\"ent-#{$6.paramcase}.html\">#{$6}</a>" if $6
+          in_site = ""
+          in_site = " in <a href=\"site-#{$8.paramcase}.html\">#{$8}</a>" if $8
+          if $3
+            "#{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}."
+          else
+            "#{first_name} #{$1}#{$2}#{of_ent}#{in_site}."
+          end
+        end
+        line_accum.gsub! /\b#{first_name}\s+(became\s+an\s+enemy\s+of)\s+([A-Z].*)\.\z/ do
+          "#{first_name} #{$1} <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
+        end
+        line_accum.gsub! /\b#{first_name}\s+(settled\s+in)\s+([A-Z].*)\.\z/ do
+          "#{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
+        end
+      else
+        line_accum.gsub! /\A(.*?)\s+was\s+a\b/ do
+          # Don't lose $1
+          full_name = $1
+          first_name = full_name[/\A\S+/]
+          "<strong>#{full_name}</strong> was a "
+        end
+      end
+      f.puts line_accum
+    end
+
     data.each_line do |line|
       line = line.strip
 
@@ -70,6 +104,7 @@ def write_figure data
       if related_entities_seen
         if line[/\ARelated\b|\bKills?\z/]
           if first_related_entity
+            print_accum.call
             f.puts "</p>"
             first_related_entity = false
           else
@@ -100,37 +135,14 @@ def write_figure data
         end
       else
         if line.start_with? 'In '
+          print_accum.call
+          line_accum = ""
           first_text_printed = true
           f.puts "</p>"
           f.puts
           f.puts "<p>"
-
-          line.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured)((\s+the\s+[^A-Z]+)([A-Z].*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z].*))?(\s+in\s+([A-Z].*))?\.\z/ do
-            of_ent = ""
-            of_ent = " of <a href=\"ent-#{$6.paramcase}.html\">#{$6}</a>" if $6
-            in_site = ""
-            in_site = " in <a href=\"site-#{$8.paramcase}.html\">#{$8}</a>" if $8
-            if $3
-              "#{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}."
-            else
-              "#{first_name} #{$1}#{$2}#{of_ent}#{in_site}."
-            end
-          end
-          line.gsub! /\b#{first_name}\s+(became\s+an\s+enemy\s+of)\s+([A-Z].*)\.\z/ do
-            "#{first_name} #{$1} <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
-          end
-          line.gsub! /\b#{first_name}\s+(settled\s+in)\s+([A-Z].*)\.\z/ do
-            "#{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
-          end
-        else
-          line.gsub! /\A(.*?)\s+was\s+a\b/ do
-            # Don't override $1
-            full_name = $1
-            first_name = full_name[/\A\S+/]
-            "<strong>#{full_name}</strong> was a "
-          end
         end
-        f.puts line unless line.empty?
+        line_accum << line << " "
       end
     end
     if related_entities_seen

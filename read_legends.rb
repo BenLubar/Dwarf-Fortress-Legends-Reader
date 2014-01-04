@@ -46,9 +46,9 @@ def write_figure data
 
   data.force_encoding Encoding::UTF_8
   data.gsub! /\e\[[0-9]*;[23]H/, "\n"
-  data.gsub! /\e\[[0-9;]*./, ''
-  data.gsub! /\e./, ''
-  data.gsub! /(\u0008|\u000f|\u2022|\u2502|\u2191|\u2193)/, ''
+  data.gsub! /\e\[[0-9;]*./, " "
+  data.gsub! /\e./, " "
+  data.gsub! /(\u0008|\u000f|\u2022|\u2502|\u2191|\u2193)/, " "
 
   $fault_data = [$fault_data, data]
 
@@ -122,20 +122,20 @@ def write_figure data
         elsif !line.empty?
           header_printed = false
           case section
-          when /\ARelated Entities\z/
+          when /\ARelated\s+Entities\z/
             line.gsub! /\A(.*?)\s+\(/ do
               "<a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> ("
             end
-          when /(?<! Other) Kills?\z/
+          when /(?<!\sOther)\s+Kills?\z/
             line.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-])/ do
               "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
             end
-          when /(?<! Notable) Kills?\z/
+          when /(?<!\sNotable)\s+Kills?\z/
             line.gsub! /\s+in\s+([A-Z].*)\z/ do
               " in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
             end
           end
-          f.puts "<li>" + line + "</li>"
+          f.puts "<li>#{line}</li>"
         end
       else
         if line.start_with? 'In '

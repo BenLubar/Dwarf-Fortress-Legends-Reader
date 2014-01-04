@@ -1,7 +1,23 @@
+require 'optparse'
+
 Escape    = "\e"
 Enter     = "\n"
 UpArrow   = "8"
 DownArrow = "2"
+
+options = {skip: 0, limit: 1<<30}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: ruby read_legends.rb [options]"
+
+  opts.on "-s", "--skip N", Integer, "Skip the first N entries (useful for parallelization)" do |n|
+    options[:skip] = n
+  end
+
+  opts.on "-n", "--limit N", Integer, "Stop after N non-skipped entries (useful for parallelization)" do |n|
+    options[:limit] = n
+  end
+end.parse!
 
 class IO
   # Read as much as possible without blocking for more than 5ms per read.
@@ -53,7 +69,17 @@ def write_figure data
   $fault_data = [$fault_data, data]
 
   open "fig-#{data[/^(.*?)\s+was\s+a\b/, 1].paramcase}.html", "w" do |f|
-    f.puts "<p>"
+    f.puts <<-EOF
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>#{data[/^(.*?)\s+was\s+a\b/, 1]} (Historical Figure)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<p>
+EOF
 
     line_accum = ""
 
@@ -154,6 +180,8 @@ def write_figure data
     else
       f.puts "</p>"
     end
+    f.puts "</body>"
+    f.puts "</html>"
   end
   $fault_data = nil
 end
@@ -194,26 +222,33 @@ IO.popen('../df_linux/df', 'r+') do |df|
       text = nil
 
       while text != original_listing
-        begin
-          df.write Enter
-          figure = ""
-          catch :break do
-            while true
-              begin
-                IO.select([df], nil, nil, 1)
-                figure << df.read_available_nonblock
-                df.write DownArrow
-              rescue IO::WaitReadable
-                throw :break
+        if options[:skip] > 0
+          options[:skip] -= 1
+        else
+          begin
+            df.write Enter
+            figure = ""
+            catch :break do
+              while true
+                begin
+                  IO.select([df], nil, nil, 1)
+                  figure << df.read_available_nonblock
+                  df.write DownArrow
+                rescue IO::WaitReadable
+                  throw :break
+                end
               end
             end
+
+            write_figure figure
+
+          ensure
+            df.write Escape
+            df.read_available
           end
 
-          write_figure figure
-
-        ensure
-          df.write Escape
-          df.read_available
+          options[:limit] -= 1
+          break if options[:limit] <= 0
         end
         df.write DownArrow
         text = df.read_available

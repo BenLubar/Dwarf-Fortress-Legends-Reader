@@ -74,6 +74,10 @@ def write_figure data
           ", #{$1} <a href=\"fig-#{$2.paramcase}.html\">#{$2}</a> #{$3} #{first_name}.#{$4}"
         end or line_accum.gsub! /,\s+#{first_name}\s+became\s+(an\s+enemy|the\s+[^\.]*?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
           ", #{first_name} became #{$1} of <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
+        end or line_accum.gsub! /,\s+#{first_name}\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{first_name} fooled <a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> into believing #{$2} was <a href=\"fig-#{$3.paramcase}.html\">#{$3}</a>."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+([A-Z][^\.]*?)\s+of\s+(The\s+[^\.]*?)\s+at\s+([A-Z][^\.]*?)\.\s+#{first_name}\s+led\s+the\s+attack\.\z/ do
+          ", <a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> attacked <a href=\"site-#{$2.paramcase}\">#{$2}</a> of <a href=\"ent-#{$3.paramcase}\">#{$3}</a> at <a href=\"site-#{$4.paramcase}\">#{$4}</a>. #{first_name} led the attack."
         end or line_accum.gsub! /,\s+#{first_name}\s+(settled\s+in|began\s+wandering)\s+([A-Z][^\.]*?)\.\z/ do
           ", #{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
         end

@@ -103,15 +103,23 @@ def write_figure data
           f.puts
           f.puts "<p>"
 
-          line.gsub! /#{first_name}\s+(struck\s+down|attacked)(\s+the\s+[^A-Z]+)([A-Z].*?)(\s+in\s+([A-Z].*))?\./ do
+          line.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by)(\s+the\s+[^A-Z]+)([A-Z].*?)(\s+in\s+([A-Z].*))?\.\z/ do
             in_site = ""
             in_site = " in <a href=\"site-#{$5.paramcase}.html\">#{$5}</a>" if $5
             "#{first_name} #{$1}#{$2}<a href=\"fig-#{$3.paramcase}.html\">#{$3}</a>#{in_site}."
           end
+          line.gsub! /\b#{first_name}\s+(became\s+an\s+enemy\s+of)\s+([A-Z].*)\.\z/ do
+            "#{first_name} #{$1} <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
+          end
+          line.gsub! /\b#{first_name}\s+(settled\s+in)\s+([A-Z].*)\.\z/ do
+            "#{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
+          end
         else
           line.gsub! /\A(.*?)\s+was\s+a\s+/ do
-            first_name = $1[/\A\S+/]
-            "<strong>#{$1}</strong> was a "
+            # Don't override $1
+            full_name = $1
+            first_name = full_name[/\A\S+/]
+            "<strong>#{full_name}</strong> was a "
           end
         end
         f.puts line unless line.empty?

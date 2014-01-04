@@ -34,12 +34,15 @@ class String
 end
 
 def write_figure data
+  $fault_data = data[0..-1]
+
   first = true
   related_entities_seen = false
   first_related_entity = false
   header_printed = false
   first_text_printed = false
   section = nil
+  first_name = nil
 
   data.force_encoding Encoding::UTF_8
   data.gsub! /\e\[[0-9]*;[23]H/, "\n"
@@ -87,8 +90,8 @@ def write_figure data
               "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
             end
           when /(?<! Notable) Kills?\z/
-            line.gsub! /in\s+(.*)\z/ do
-              "in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
+            line.gsub! /\s+in\s+([A-Z].*)\z/ do
+              " in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
             end
           end
           f.puts "<li>" + line + "</li>"
@@ -99,8 +102,17 @@ def write_figure data
           f.puts "</p>"
           f.puts
           f.puts "<p>"
+
+          line.gsub! /#{first_name}\s+(struck\s+down|attacked)(\s+the\s+[^A-Z]+)([A-Z].*?)(\s+in\s+([A-Z].*))?\./ do
+            in_site = ""
+            in_site = " in <a href=\"site-#{$5.paramcase}.html\">#{$5}</a>" if $5
+            "#{first_name} #{$1}#{$2}<a href=\"fig-#{$3.paramcase}.html\">#{$3}</a>#{in_site}."
+          end
         else
-          line.gsub! /\A(.*?)\s+was\s+a\s+/, '<strong>\1</strong> was a '
+          line.gsub! /\A(.*?)\s+was\s+a\s+/ do
+            first_name = $1[/\A\S+/]
+            "<strong>#{$1}</strong> was a "
+          end
         end
         f.puts line unless line.empty?
       end
@@ -111,6 +123,7 @@ def write_figure data
       f.puts "</p>"
     end
   end
+  $fault_data = nil
 end
 
 IO.popen('../df_linux/df', 'r+') do |df|
@@ -137,46 +150,55 @@ IO.popen('../df_linux/df', 'r+') do |df|
   df.read_available
   df.write Enter
 
-  # wait for legends mode to load
-  text = df.read_available until text['Historical events left to discover:']
+  begin
+    # wait for legends mode to load
+    text = df.read_available until text['Historical events left to discover:']
 
-  # Select "historical figures"
-  df.write Enter
-
-  original_listing = df.read_available
-  text = nil
-
-  while text != original_listing
+    # Select "historical figures"
     df.write Enter
-    figure = ""
-    catch :break do
-      while true
+
+    begin
+      original_listing = df.read_available
+      text = nil
+
+      while text != original_listing
         begin
-          IO.select([df], nil, nil, 1)
-          figure << df.read_available_nonblock
-          df.write DownArrow
-        rescue IO::WaitReadable
-          throw :break
+          df.write Enter
+          figure = ""
+          catch :break do
+            while true
+              begin
+                IO.select([df], nil, nil, 1)
+                figure << df.read_available_nonblock
+                df.write DownArrow
+              rescue IO::WaitReadable
+                throw :break
+              end
+            end
+          end
+
+          write_figure figure
+
+        ensure
+          df.write Escape
+          df.read_available
         end
+        df.write DownArrow
+        text = df.read_available
       end
+
+    ensure
+      df.write Escape
+      df.read_available
     end
-
-    write_figure figure
-
+  ensure
     df.write Escape
     df.read_available
-    df.write DownArrow
-    text = df.read_available
+    df.write UpArrow
+    df.read_available
+    df.write Enter
+    df.read_available
+
+    p $fault_data if $fault_data
   end
-
-  df.write Escape
-  df.read_available
-  df.write Escape
-  df.read_available
-  df.write UpArrow
-  df.read_available
-  df.write Enter
-  df.read_available
 end
-
-p figure

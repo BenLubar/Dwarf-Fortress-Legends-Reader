@@ -111,7 +111,7 @@ def write_figure data
             f.puts "</ul>"
           end
           f.puts
-          f.puts "<h2>" + line + "</h2>"
+          f.puts "<h2 id=\"#{line[/\ARelated.*\z|((Other|Notable)\s+)?Kills?\z/].paramcase}\">#{line}</h2>"
           f.puts "<ul>"
           section = line
           header_printed = true

@@ -30,7 +30,7 @@ end
 def write_figure index, data
   first = true
   related_entities_seen = false
-  new_line = false
+  first_related_entity = false
   header_printed = false
 
   open("fig#{index}.html", "w") do |f|
@@ -43,17 +43,16 @@ def write_figure index, data
         next
       end
 
-      if line == "Related Entities"
+      if line[/\ARelated\b|\bKills?\z/] and !related_entities_seen
         related_entities_seen = true
-        new_line = true
+        first_related_entity = true
       end
 
       if related_entities_seen
-        if line.empty?
-          new_line = true unless header_printed
-        elsif new_line
-          if line == "Related Entities"
+        if line[/\ARelated\b|\bKills?\z/]
+          if first_related_entity
             f.puts "</p>"
+            first_related_entity = false
           else
             f.puts "</ul>"
           end
@@ -61,19 +60,24 @@ def write_figure index, data
           f.puts "<h2>" + line + "</h2>"
           f.puts "<ul>"
           header_printed = true
-          new_line = false
-        else
+        elsif !line.empty?
           header_printed = false
           f.puts "<li>" + line + "</li>"
         end
       else
         if line.start_with? 'In '
-          f.puts "</p>\n<p>"
+          f.puts "</p>"
+          f.puts
+          f.puts "<p>"
         end
-        f.puts line
+        f.puts line unless line.empty?
       end
     end
-    f.puts "</ul>"
+    if related_entities_seen
+      f.puts "</ul>"
+    else
+      f.puts "</p>"
+    end
   end
 end
 

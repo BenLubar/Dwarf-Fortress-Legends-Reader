@@ -60,19 +60,22 @@ def write_figure data
     print_accum = proc do
       line_accum.strip!
       if first_text_printed
-        line_accum.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)((\s+the\s+[^A-Z]+)([A-Z].*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z].*?))?(\s+in\s+([A-Z].*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+        line_accum.gsub! /,\s+#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)((\s+the\s+[^A-Z]+)([A-Z][^\.]*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
           of_ent = ""
           of_ent = " of <a href=\"ent-#{$6.paramcase}.html\">#{$6}</a>" if $6
           in_site = ""
           in_site = " in <a href=\"site-#{$8.paramcase}.html\">#{$8}</a>" if $8
           if $3
-            "#{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}."
+            ", #{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}.#{$9}"
           else
-            "#{first_name} #{$1}#{$2}#{of_ent}#{in_site}.#{$9}"
+            ", #{first_name} #{$1}#{$2}#{of_ent}#{in_site}.#{$9}"
           end
         end
-        line_accum.gsub! /\b#{first_name}\s+(became\s+an\s+enemy\s+of)\s+([A-Z].*)\.\z/ do
-          "#{first_name} #{$1} <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
+        line_accum.gsub! /,\s+(the\s+[^A-Z]+)([A-Z].*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)\s+#{first_name}\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+          ", #{$1} <a href=\"fig-#{$2.paramcase}.html\">#{$2}</a> #{$3} #{first_name}.#{$4}"
+        end
+        line_accum.gsub! /\b#{first_name}\s+became\s+(an\s+enemy|the\s+.*?)\s+of\s+([A-Z].*)\.\z/ do
+          "#{first_name} became #{$1} of <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
         end
         line_accum.gsub! /\b#{first_name}\s+(settled\s+in)\s+([A-Z].*)\.\z/ do
           "#{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."

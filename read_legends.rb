@@ -50,7 +50,9 @@ def write_figure data
   data.gsub! /\e./, ''
   data.gsub! /(\u0008|\u000f|\u2022|\u2502|\u2191|\u2193)/, ''
 
-  open "fig-#{data[/^(.*?)\s+was\s+a\s+/, 1].paramcase}.html", "w" do |f|
+  $fault_data = [$fault_data, data]
+
+  open "fig-#{data[/^(.*?)\s+was\s+a\b/, 1].paramcase}.html", "w" do |f|
     f.puts "<p>"
     data.each_line do |line|
       line = line.strip
@@ -86,7 +88,7 @@ def write_figure data
               "<a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> ("
             end
           when /(?<! Other) Kills?\z/
-            line.gsub! /\A(.*?)(\s+the\s+[a-z])/ do
+            line.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-])/ do
               "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
             end
           when /(?<! Notable) Kills?\z/
@@ -103,10 +105,16 @@ def write_figure data
           f.puts
           f.puts "<p>"
 
-          line.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by)(\s+the\s+[^A-Z]+)([A-Z].*?)(\s+in\s+([A-Z].*))?\.\z/ do
+          line.gsub! /\b#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured)((\s+the\s+[^A-Z]+)([A-Z].*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z].*))?(\s+in\s+([A-Z].*))?\.\z/ do
+            of_ent = ""
+            of_ent = " of <a href=\"ent-#{$6.paramcase}.html\">#{$6}</a>" if $6
             in_site = ""
-            in_site = " in <a href=\"site-#{$5.paramcase}.html\">#{$5}</a>" if $5
-            "#{first_name} #{$1}#{$2}<a href=\"fig-#{$3.paramcase}.html\">#{$3}</a>#{in_site}."
+            in_site = " in <a href=\"site-#{$8.paramcase}.html\">#{$8}</a>" if $8
+            if $3
+              "#{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}."
+            else
+              "#{first_name} #{$1}#{$2}#{of_ent}#{in_site}."
+            end
           end
           line.gsub! /\b#{first_name}\s+(became\s+an\s+enemy\s+of)\s+([A-Z].*)\.\z/ do
             "#{first_name} #{$1} <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
@@ -115,7 +123,7 @@ def write_figure data
             "#{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
           end
         else
-          line.gsub! /\A(.*?)\s+was\s+a\s+/ do
+          line.gsub! /\A(.*?)\s+was\s+a\b/ do
             # Don't override $1
             full_name = $1
             first_name = full_name[/\A\S+/]

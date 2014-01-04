@@ -27,15 +27,29 @@ class IO
   end
 end
 
-def write_figure index, data
+class String
+  def paramcase
+    self.downcase.strip.gsub(/\s+/, '-')
+  end
+end
+
+def write_figure data
   first = true
   related_entities_seen = false
   first_related_entity = false
   header_printed = false
+  first_text_printed = false
+  section = nil
 
-  open("fig#{index}.html", "w") do |f|
+  data.force_encoding Encoding::UTF_8
+  data.gsub! /\e\[[0-9]*;[23]H/, "\n"
+  data.gsub! /\e\[[0-9;]*./, ''
+  data.gsub! /\e./, ''
+  data.gsub! /(\u0008|\u000f|\u2022|\u2502|\u2191|\u2193)/, ''
+
+  open "fig-#{data[/^(.*?)\s+was\s+a\s+/, 1].paramcase}.html", "w" do |f|
     f.puts "<p>"
-    data.force_encoding(Encoding::UTF_8).gsub(/\e\[[0-9]*;[23]H/, "\n").gsub(/\e\[[0-9;]*./, '').gsub(/\e./, '').gsub(/(\u0008|\u000f|\u2022|\u2502|\u2191|\u2193)/, '').each_line do |line|
+    data.each_line do |line|
       line = line.strip
 
       if first and not line.empty?
@@ -59,16 +73,34 @@ def write_figure index, data
           f.puts
           f.puts "<h2>" + line + "</h2>"
           f.puts "<ul>"
+          section = line
           header_printed = true
         elsif !line.empty?
           header_printed = false
+          case section
+          when /\ARelated Entities\z/
+            line.gsub! /\A(.*?)\s+\(/ do
+              "<a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> ("
+            end
+          when /(?<! Other) Kills?\z/
+            line.gsub! /\A(.*?)(\s+the\s+[a-z])/ do
+              "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
+            end
+          when /(?<! Notable) Kills?\z/
+            line.gsub! /in\s+(.*)\z/ do
+              "in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
+            end
+          end
           f.puts "<li>" + line + "</li>"
         end
       else
         if line.start_with? 'In '
+          first_text_printed = true
           f.puts "</p>"
           f.puts
           f.puts "<p>"
+        else
+          line.gsub! /\A(.*?)\s+was\s+a\s+/, '<strong>\1</strong> was a '
         end
         f.puts line unless line.empty?
       end
@@ -80,8 +112,6 @@ def write_figure index, data
     end
   end
 end
-
-figure_index = 1
 
 IO.popen('../df_linux/df', 'r+') do |df|
   df.read_available # ignore "reading bindings"
@@ -131,8 +161,7 @@ IO.popen('../df_linux/df', 'r+') do |df|
       end
     end
 
-    write_figure figure_index, figure
-    figure_index += 1
+    write_figure figure
 
     df.write Escape
     df.read_available

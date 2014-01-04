@@ -5,16 +5,28 @@ Enter     = "\n"
 UpArrow   = "8"
 DownArrow = "2"
 
-options = {skip: 0, limit: 1<<30}
+options = {skip: 0, section: -1, limit: 1<<30}
+
+Types = {
+  figure:    {name: "Figure",    pre: "fig" },
+  site:      {name: "Site",      pre: "site"},
+  region:    {name: "Region",    pre: "site"},
+  entity:    {name: "Entity",    pre: "ent" },
+  structure: {name: "Structure", pre: "site"}
+}
 
 OptionParser.new do |opts|
   opts.banner = "Usage: ruby read_legends.rb [options]"
 
-  opts.on "-s", "--skip N", Integer, "Skip the first N entries (useful for parallelization)" do |n|
+  opts.on "-s", "--skip N", Integer, "Skip the first N entries" do |n|
     options[:skip] = n
   end
 
-  opts.on "-n", "--limit N", Integer, "Stop after N non-skipped entries (useful for parallelization)" do |n|
+  opts.on "-t", "--section N", Integer, "Skip the first N sections (figure/site/region/entity/structure)" do |n|
+    options[:section] = n
+  end
+
+  opts.on "-n", "--limit N", Integer, "Stop after N non-skipped entries" do |n|
     options[:limit] = n
   end
 end.parse!
@@ -49,7 +61,7 @@ class String
   end
 end
 
-def write_figure data
+def write_page type, data
   $fault_data = data[0..-1]
 
   first = true
@@ -68,13 +80,13 @@ def write_figure data
 
   $fault_data = [$fault_data, data]
 
-  open "fig-#{data[/^(.*?)\s+was\s+a\b/, 1].paramcase}.html", "w" do |f|
+  open "#{Types[type][:pre]}-#{data[/^(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1].paramcase}.html", "w" do |f|
     f.puts <<-EOF
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>#{data[/^(.*?)\s+was\s+a\b/, 1]} (Historical Figure)</title>
+<title>#{data[/^(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1]} (#{Types[type][:name]})</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -108,11 +120,12 @@ EOF
           ", #{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
         end
       else
-        line_accum.gsub! /\A(.*?)\s+was\s+a\b/ do
+        line_accum.gsub! /\A(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/ do
           # Don't lose $1
           full_name = $1
+          verb = $2
           first_name = full_name[/\A\S+/]
-          "<strong>#{full_name}</strong> was a "
+          "<strong>#{full_name}</strong> #{verb} "
         end
       end
       f.puts line_accum
@@ -214,49 +227,68 @@ IO.popen('../df_linux/df', 'r+') do |df|
     # wait for legends mode to load
     text = df.read_available until text['Historical events left to discover:']
 
-    # Select "historical figures"
-    df.write Enter
-
-    begin
-      original_listing = df.read_available
-      text = nil
-
-      while text != original_listing
-        if options[:skip] > 0
-          options[:skip] -= 1
-        else
-          begin
-            df.write Enter
-            figure = ""
-            catch :break do
-              while true
-                begin
-                  IO.select([df], nil, nil, 1)
-                  figure << df.read_available_nonblock
-                  df.write DownArrow
-                rescue IO::WaitReadable
-                  throw :break
-                end
-              end
-            end
-
-            write_figure figure
-
-          ensure
-            df.write Escape
-            df.read_available
-          end
-
-          options[:limit] -= 1
-          break if options[:limit] <= 0
-        end
+    [:figure, :site, nil, :region, nil, :entity, :structure].each do |type|
+      unless type
         df.write DownArrow
-        text = df.read_available
+        df.read_available
+        next
       end
 
-    ensure
-      df.write Escape
+      if options[:section] > 0
+        options[:section] -= 1
+        df.write DownArrow
+        df.read_available
+        next
+      end
+
+      df.write Enter
+
+      begin
+        original_listing = df.read_available
+        text = nil
+
+        while text != original_listing
+          if options[:skip] > 0
+            options[:skip] -= 1
+          else
+            begin
+              df.write Enter
+              data = ""
+              catch :break do
+                while true
+                  begin
+                    IO.select([df], nil, nil, 1)
+                    data << df.read_available_nonblock
+                    df.write DownArrow
+                  rescue IO::WaitReadable
+                    throw :break
+                  end
+                end
+              end
+
+              write_page type, data
+
+            ensure
+              df.write Escape
+              df.read_available
+            end
+
+            options[:limit] -= 1
+            break if options[:limit] <= 0
+          end
+          df.write DownArrow
+          text = df.read_available
+        end
+
+      ensure
+        df.write Escape
+        df.read_available
+      end
+
+      df.write DownArrow
       df.read_available
+
+      break if options[:section] == 0
     end
   ensure
     df.write Escape

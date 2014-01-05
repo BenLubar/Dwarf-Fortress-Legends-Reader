@@ -1,0 +1,24 @@
+html {
+	background: #111;
+}
+body {
+	font: 1em/1.2 sans-serif;
+	max-width: 800px;
+	margin: 0 auto;
+	background: #444 url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAB4AQMAAAAwiwQsAAAABlBMVEUAAAD///+l2Z/dAAAAAXRSTlMAQObYZgAAASlJREFUaN7t2EuOgzAQBFCjLFjOEeYoHG0mN8tRcgSWLJAr7i4lgI2IonxE5CpZTdMLv41lJIKiKIqi7DkNLHExEyJEyCKHSGquCHkh0iGlfwppAZzDWv5wFlIzEpKQIYf+MST8xhb/oQjnQipHsl1xF2liIuaIrSIcCqkcGVMF7LLsuzFVYGTP+aKuIzyt3thl2cJevwHxh5C3IdzSloGd35fE6WRrG7ERG3cSKOQzCJjdIX2YEJwmxHoeZ05YN5DjwCNsCKw3U0jtSCAybTafe37ASgSxsVUifpBvZ1mIkDWEPefLtYr43qzfhniEvAvpgBM/wuy5yXye1RLhZ/ZKYbAGg88HIR9Bpp/P+0L2+htdSK2IMaUhRIiQXBEi5Bohm4iiKIpSRy76rRTskoFl2QAAAABJRU5ErkJggg==) top center no-repeat;
+	color: #fff;
+	padding: 100px 25px 5px;
+	box-shadow: 0 0 .5em #444;
+}
+body p:first-of-type {
+	font-size: 1.2em;
+}
+a {
+	color: #7af;
+}
+a:visited {
+	color: #a7f;
+}
+a:active {
+	color: #f77;
+}

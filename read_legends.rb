@@ -119,13 +119,13 @@ EOF
           else
             ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{in_site}.#{$11}"
           end
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(an\s+enemy|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2} became #{$3} of #{link.call "ent", $4}."
         end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
           ", #{link.call "fig", $1} fooled #{link.call "ent", $2} into believing #{$3} was #{link.call "fig", $4}."
         end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+(The\s+[A-Z][^\.]*?)\s+(of\s+(The\s+[A-Z][^\.]*?)\s+)?at\s+([A-Z][^\.]*?)\.\s+(The\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+led\s+the\s+attack(,\s+and\s+the\s+defenders\s+were\s+led\s+by\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?))?\.\z/ do
           of_ent = ""
-          of_ent = " of #{link.call "ent", $4}" if $4
+          of_ent = " of #{link.call "ent", $4} " if $4
           and_the_defenders = ""
           and_the_defenders = ", and the defenders were led by #{$9}#{link.call "fig", $10}" if $10
           ", #{link.call "ent", $1} attacked #{link.call "site", $2} #{of_ent}at #{link.call "site", $5}. #{$6}#{link.call "fig", $7} led the attack#{and_the_defenders}."

@@ -10,6 +10,7 @@ options = {skip: 0, section: -1, limit: 1<<30}
 Types = {
   figure:    {name: "Figure",    pre: "fig" },
   site:      {name: "Site",      pre: "site"},
+  artifact:  {name: "Artifact",  pre: "art"},
   region:    {name: "Region",    pre: "site"},
   entity:    {name: "Entity",    pre: "ent" },
   structure: {name: "Structure", pre: "site"}
@@ -22,7 +23,7 @@ OptionParser.new do |opts|
     options[:skip] = n
   end
 
-  opts.on "-t", "--section N", Integer, "Skip the first N sections (figure/site/region/entity/structure)" do |n|
+  opts.on "-t", "--section N", Integer, "Only process one section (0:figure/1:site/2:artifact/3:region/4:entity/5:structure)" do |n|
     options[:section] = n
   end
 
@@ -57,7 +58,7 @@ end
 
 class String
   def paramcase
-    self.downcase.strip.gsub(/\s+/, '-')
+    self.gsub(/[?,:"]/, " ").downcase.strip.gsub(/\s+/, "-")
   end
 end
 
@@ -70,6 +71,7 @@ def write_page type, data
   header_printed = false
   first_text_printed = false
   section = nil
+  full_name = nil
   first_name = nil
 
   data.force_encoding Encoding::UTF_8
@@ -80,13 +82,13 @@ def write_page type, data
 
   $fault_data = [$fault_data, data]
 
-  open "#{Types[type][:pre]}-#{data[/^(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1].paramcase}.html", "w" do |f|
+  open "#{Types[type][:pre]}-#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1].paramcase}.html", "w" do |f|
     f.puts <<-EOF
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>#{data[/^(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1]} (#{Types[type][:name]})</title>
+<title>#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1]} (#{Types[type][:name]})</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -95,29 +97,37 @@ EOF
 
     line_accum = ""
 
+    link = proc do |prefix, name|
+      if name == full_name or name == first_name
+        name
+      else
+        "<a href=\"#{prefix}-#{name.paramcase}.html\">#{name}</a>"
+      end
+    end
+
     print_accum = proc do
       line_accum.strip!
       if first_text_printed
-        line_accum.gsub! /,\s+#{first_name}\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)((\s+the\s+[^A-Z]+)([A-Z][^\.]*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+        line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)((\s+the\s+[a-z\s\-]+)([A-Z][^\.]*?)|\s+an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
           of_ent = ""
-          of_ent = " of <a href=\"ent-#{$6.paramcase}.html\">#{$6}</a>" if $6
+          of_ent = " of #{link.call "ent", $7}" if $7
           in_site = ""
-          in_site = " in <a href=\"site-#{$8.paramcase}.html\">#{$8}</a>" if $8
-          if $3
-            ", #{first_name} #{$1}#{$3}<a href=\"fig-#{$4.paramcase}.html\">#{$4}</a>#{of_ent}#{in_site}.#{$9}"
+          in_site = " in #{link.call "site", $9}" if $9
+          if $4
+            ", #{link.call "fig", $1} #{$2}#{$4}#{link.call "fig", $5}#{of_ent}#{in_site}.#{$10}"
           else
-            ", #{first_name} #{$1}#{$2}#{of_ent}#{in_site}.#{$9}"
+            ", #{link.call "fig", $1}  #{$2}#{$3}#{of_ent}#{in_site}.#{$10}"
           end
-        end or line_accum.gsub! /,\s+(the\s+[^A-Z]+)([A-Z][^\.]*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)\s+#{first_name}\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
-          ", #{$1} <a href=\"fig-#{$2.paramcase}.html\">#{$2}</a> #{$3} #{first_name}.#{$4}"
-        end or line_accum.gsub! /,\s+#{first_name}\s+became\s+(an\s+enemy|the\s+[^\.]*?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{first_name} became #{$1} of <a href=\"ent-#{$2.paramcase}.html\">#{$2}</a>."
-        end or line_accum.gsub! /,\s+#{first_name}\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{first_name} fooled <a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> into believing #{$2} was <a href=\"fig-#{$3.paramcase}.html\">#{$3}</a>."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+([A-Z][^\.]*?)\s+of\s+(The\s+[^\.]*?)\s+at\s+([A-Z][^\.]*?)\.\s+#{first_name}\s+led\s+the\s+attack\.\z/ do
-          ", <a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> attacked <a href=\"site-#{$2.paramcase}\">#{$2}</a> of <a href=\"ent-#{$3.paramcase}\">#{$3}</a> at <a href=\"site-#{$4.paramcase}\">#{$4}</a>. #{first_name} led the attack."
-        end or line_accum.gsub! /,\s+#{first_name}\s+(settled\s+in|began\s+wandering)\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{first_name} #{$1} <a href=\"site-#{$2.paramcase}.html\">#{$2}</a>."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+became\s+(an\s+enemy|the\s+[^\.]*?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "fig", $1} became #{$2} of #{link.call "ent", $3}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "fig", $1} fooled #{link.call "ent", $2} into believing #{$3} was #{link.call "fig", $4}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+([A-Z][^\.]*?)\s+of\s+([A-Z][^\.]*?)\s+at\s+([A-Z][^\.]*?)\.\s+([A-Z][^\.]*?)\s+led\s+the\s+attack\.\z/ do
+          ", #{link.call "ent", $1} attacked #{link.call "site", $2} of #{link.call "ent", $3} at #{link.call "site", $4}. #{link.call "fig", $5} led the attack."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+(settled\s+in|began\s+wandering)\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "fig", $1} #{$2} #{link.call "site", $2}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+of\s+([A-Z][^\.]*?)\s+constructed\s+([A-Z][^\.]*?)\s+in\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "ent", $1} of #{link.call "ent", $2} constructed #{link.call "site", $3} in #{link.call "site", $4}."
         end
       else
         line_accum.gsub! /\A(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/ do
@@ -127,12 +137,15 @@ EOF
           first_name = full_name[/\A\S+/]
           "<strong>#{full_name}</strong> #{verb} "
         end
+        line_accum.gsub! /\s+in\s+([A-Z][^\.]*?)\.\z/ do
+          " in #{link.call "site", $1}."
+        end
       end
       f.puts line_accum
     end
 
     data.each_line do |line|
-      line = line.strip
+      line.strip!
 
       if first and not line.empty?
         first = false
@@ -170,7 +183,7 @@ EOF
               "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
             end
           when /(?<!\sNotable)\s+Kills?\z/
-            line.gsub! /\s+in\s+([A-Z].*)\z/ do
+            line.gsub! /\s+in\s+([A-Z].*?)\z/ do
               " in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
             end
           end
@@ -185,7 +198,7 @@ EOF
           f.puts
           f.puts "<p>"
         end
-        line_accum << line << " "
+        line_accum << line << " " unless line.empty?
       end
     end
     if related_entities_seen
@@ -227,7 +240,7 @@ IO.popen('../df_linux/df', 'r+') do |df|
     # wait for legends mode to load
     text = df.read_available until text['Historical events left to discover:']
 
-    [:figure, :site, nil, :region, nil, :entity, :structure].each do |type|
+    [:figure, :site, :artifact, :region, nil, :entity, :structure].each do |type|
       unless type
         df.write DownArrow
         df.read_available

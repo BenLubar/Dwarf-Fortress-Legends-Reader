@@ -257,6 +257,10 @@ IO.popen('../df_linux/df', 'r+') do |df|
       df.write Enter
 
       begin
+        df.read_available
+        df.write UpArrow
+        df.read_available
+        df.write DownArrow
         original_listing = df.read_available
         text = nil
 

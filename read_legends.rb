@@ -98,10 +98,11 @@ EOF
     line_accum = ""
 
     link = proc do |prefix, name|
-      if name == full_name or name == first_name
+      param = name.paramcase
+      if param == full_name.paramcase or param == first_name.paramcase
         name
       else
-        "<a href=\"#{prefix}-#{name.paramcase}.html\">#{name}</a>"
+        "<a href=\"#{prefix}-#{param}.html\">#{name}</a>"
       end
     end
 
@@ -118,18 +119,26 @@ EOF
           else
             ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{in_site}.#{$11}"
           end
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+became\s+(an\s+enemy|the\s+[^\.]*?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{link.call "fig", $1} became #{$2} of #{link.call "ent", $3}."
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(an\s+enemy|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{$1}#{link.call "fig", $2} became #{$3} of #{link.call "ent", $4}."
         end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
           ", #{link.call "fig", $1} fooled #{link.call "ent", $2} into believing #{$3} was #{link.call "fig", $4}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+(The\s+[A-Z][^\.]*?)\s+(of\s+(The\s+[A-Z][^\.]*?)\s+)?at\s+([A-Z][^\.]*?)\.\s+(The\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+led\s+the\s+attack\.\z/ do
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+(The\s+[A-Z][^\.]*?)\s+(of\s+(The\s+[A-Z][^\.]*?)\s+)?at\s+([A-Z][^\.]*?)\.\s+(The\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+led\s+the\s+attack(,\s+and\s+the\s+defenders\s+were\s+led\s+by\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?))?\.\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $4}" if $4
-          ", #{link.call "ent", $1} attacked #{link.call "site", $2} #{of_ent}at #{link.call "site", $5}. #{$6}#{link.call "fig", $7} led the attack."
+          and_the_defenders = ""
+          and_the_defenders = ", and the defenders were led by #{$9}#{link.call "fig", $10}" if $10
+          ", #{link.call "ent", $1} attacked #{link.call "site", $2} #{of_ent}at #{link.call "site", $5}. #{$6}#{link.call "fig", $7} led the attack#{and_the_defenders}."
         end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(settled\s+in|began\s+wandering)\s+([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2} #{$3} #{link.call "site", $4}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+of\s+([A-Z][^\.]*?)\s+constructed\s+([A-Z][^\.]*?)\s+in\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{link.call "ent", $1} of #{link.call "ent", $2} constructed #{link.call "site", $3} in #{link.call "site", $4}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)(\s+of\s+(The\s+[A-Z][^\.]*?))?\s+(constructed|founded)\s+([A-Z][^\.]*?)(\s+in\s+([A-Z][^\.]*?))?\.\z/ do
+          of_ent = ""
+          of_ent = " of #{link.call "ent", $3}" if $3
+          in_site = ""
+          in_site = " in #{link.call "site", $7}" if $7
+          ", #{link.call "ent", $1}#{of_ent} #{$4} #{link.call "site", $5}#{in_site}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+defeated\s+([A-Z][^\.]*?)\s+and\s+(pillaged)\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "ent", $1} defeated #{link.call "ent", $2} and #{$3} #{link.call "site", $4}."
         end
       else
         line_accum.gsub! /\A(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/ do
@@ -178,15 +187,19 @@ EOF
           case section
           when /\ARelated\s+Entities\z/
             line.gsub! /\A(.*?)\s+\(/ do
-              "<a href=\"ent-#{$1.paramcase}.html\">#{$1}</a> ("
+              "#{link.call "ent", $1} ("
+            end
+          when /\ARelated\s+Historical\s+Figures\z/
+            line.gsub! /\A([^,]+?)(\s+the\s+[a-z\s\-]+)?,/ do
+              "#{link.call "fig", $1} #{$2},"
             end
           when /(?<!\sOther)\s+Kills?\z/
-            line.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-])/ do
-              "<a href=\"fig-#{$1.paramcase}.html\">#{$1}</a>#{$2}"
+            line.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-]+)/ do
+              "#{link.call "fig", $1}#{$2}"
             end
           when /(?<!\sNotable)\s+Kills?\z/
             line.gsub! /\s+in\s+([A-Z].*?)\z/ do
-              " in <a href=\"site-#{$1.paramcase}.html\">#{$1}</a>"
+              " in #{link.call "site", $1}"
             end
           end
           f.puts "<li>#{line}</li>"

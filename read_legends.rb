@@ -33,7 +33,7 @@ OptionParser.new do |opts|
 end.parse!
 
 class IO
-  # Read as much as possible without blocking for more than 5ms per read.
+  # Read as much as possible without blocking for more than 1ms per read.
   def read_available_nonblock
     buffer = ""
     begin
@@ -43,7 +43,7 @@ class IO
         buffer << addition
       end
     rescue IO::WaitReadable => err
-      retry if IO.select([self], nil, nil, 0.005)
+      retry if IO.select([self], nil, nil, 0.001)
       raise err if buffer.empty?
     end
     buffer
@@ -289,7 +289,7 @@ IO.popen('../df_linux/df', 'r+') do |df|
               catch :break do
                 while true
                   begin
-                    IO.select([df], nil, nil, 1)
+                    IO.select([df], nil, nil, 0.050)
                     data << df.read_available_nonblock
                     df.write DownArrow
                   rescue IO::WaitReadable

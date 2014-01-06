@@ -33,7 +33,7 @@ OptionParser.new do |opts|
 end.parse!
 
 class IO
-  # Read as much as possible without blocking for more than 1ms per read.
+  # Read as much as possible without blocking for more than 5ms per read.
   def read_available_nonblock
     buffer = ""
     begin
@@ -43,7 +43,7 @@ class IO
         buffer << addition
       end
     rescue IO::WaitReadable => err
-      retry if IO.select([self], nil, nil, 0.001)
+      retry if IO.select([self], nil, nil, 0.005)
       raise err if buffer.empty?
     end
     buffer
@@ -71,8 +71,8 @@ def write_page type, data
   header_printed = false
   first_text_printed = false
   section = nil
-  full_name = nil
-  first_name = nil
+  full_name = ""
+  first_name = ""
 
   data.force_encoding Encoding::UTF_8
   data.gsub! /\e\[[0-9]*;[23]H/, "\n"
@@ -82,14 +82,15 @@ def write_page type, data
 
   $fault_data = [$fault_data, data]
 
-  open "#{Types[type][:pre]}-#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1].paramcase}.html", "w" do |f|
+  open "#{Types[type][:pre]}-#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+(with)?in)\s+/, 1].paramcase}.html", "w" do |f|
     f.puts <<-EOF
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/, 1]} (#{Types[type][:name]})</title>
+<title>#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+(with)?in)\s+/, 1]} (#{Types[type][:name]})</title>
 <link rel="stylesheet" href="style.css">
+<script src="script.js"></script>
 </head>
 <body>
 <p>
@@ -141,15 +142,23 @@ EOF
           ", #{link.call "ent", $1} defeated #{link.call "ent", $2} and #{$3} #{link.call "site", $4}."
         end
       else
-        line_accum.gsub! /\A(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+in)\s+/ do
+        line_accum.gsub! /\A(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+(with)?in)\s+/ do
           # Don't lose $1
           full_name = $1
           verb = $2
-          first_name = full_name[/\A\S+/]
+          first_name = full_name[/\A\S+/] or ""
           "<strong>#{full_name}</strong> #{verb} "
         end
         line_accum.gsub! /\s+in\s+([A-Z][^\.]*?)\.\z/ do
           " in #{link.call "site", $1}."
+        end
+        # Work around Masterwork weirdness.
+        line_accum.gsub! /(,)?([a-z\s\-]+), +youth, +writing, +wisdom, +the +wind, +the +weather, +wealth, +water, +war, +volcanos, +victory, +valor, +twilight, +truth, +trickery, +trees, +treachery, +travelers, +trade, +torture, +thunder, +thralldom, +theft, +the +sun, +suicide, +strength, +storms, +the +stars, +speech, +song, +the +sky, +silence, +the +seasons, +scholarship, +salt, +sacrifice, +rumors, +rulership, +rivers, +revenge, +revelry, +rebirth, +rainbows, +the +rain, +pregnancy, +poetry, +plants, +persuasion, +peace, +painting, +order, +oceans, +oaths, +nightmares, +the +night, +nature, +music, +murder, +muck, +mountains, +the +moon, +mist, +misery, +minerals, +metals, +mercy, +marriage, +lust, +luck, +loyalty, +love, +longevity, +lightning, +light, +lies, +laws, +lakes, +labor, +justice, +jewels, +jealousy, +inspiration, +hunting, +hospitality, +healing, +happiness, +generosity, +games, +gambling, +freedom, +fortresses, +forgiveness, +food, +fishing, +fish, +fire, +festivals, +fertility, +fate, +fame, +family, +earth, +duty, +dusk, +dreams, +disease, +discipline, +depravity, +deformity, +death, +day, +the +dawn, +darkness, +dance, +creation, +crafts, +courage, +consolation, +coasts, +children, +charity, +chaos, +caverns, +boundaries, +blight, +birth, +beauty, +balance, +art, +animals +and +agriculture/ do
+          if $1
+            " and#{$2}"
+          else
+            $2
+          end
         end
       end
       f.puts line_accum
@@ -186,7 +195,7 @@ EOF
           header_printed = false
           case section
           when /\ARelated\s+Entities\z/
-            line.gsub! /\A(.*?)\s+\(/ do
+            line.gsub! /\A(.+?)\s+\(/ do
               "#{link.call "ent", $1} ("
             end
           when /\ARelated\s+Historical\s+Figures\z/
@@ -251,85 +260,87 @@ IO.popen('../df_linux/df', 'r+') do |df|
   df.read_available
   df.write Enter
 
-  begin
-    # wait for legends mode to load
-    text = df.read_available until text['Historical events left to discover:']
+  catch :limit_reached do
+    begin
+      # wait for legends mode to load
+      text = df.read_available until text['Historical events left to discover:']
 
-    [:figure, :site, :artifact, :region, nil, :entity, :structure].each do |type|
-      unless type
-        df.write DownArrow
-        df.read_available
-        next
-      end
-
-      if options[:section] > 0
-        options[:section] -= 1
-        df.write DownArrow
-        df.read_available
-        next
-      end
-
-      df.write Enter
-
-      begin
-        df.read_available
-        df.write UpArrow
-        df.read_available
-        df.write DownArrow
-        original_listing = df.read_available
-        text = nil
-
-        while text != original_listing
-          if options[:skip] > 0
-            options[:skip] -= 1
-          else
-            begin
-              df.write Enter
-              data = ""
-              catch :break do
-                while true
-                  begin
-                    IO.select([df], nil, nil, 0.050)
-                    data << df.read_available_nonblock
-                    df.write DownArrow
-                  rescue IO::WaitReadable
-                    throw :break
-                  end
-                end
-              end
-
-              write_page type, data
-
-            ensure
-              df.write Escape
-              df.read_available
-            end
-
-            options[:limit] -= 1
-            break if options[:limit] <= 0
-          end
+      [:figure, :site, :artifact, :region, nil, :entity, :structure].each do |type|
+        unless type
           df.write DownArrow
-          text = df.read_available
+          df.read_available
+          next
         end
 
-      ensure
-        df.write Escape
-        df.read_available
-      end
+        if options[:section] > 0
+          options[:section] -= 1
+          df.write DownArrow
+          df.read_available
+          next
+        end
 
-      df.write DownArrow
+        df.write Enter
+
+        begin
+          df.read_available
+          df.write UpArrow
+          df.read_available
+          df.write DownArrow
+          original_listing = df.read_available
+          text = nil
+
+          while text != original_listing
+            if options[:skip] > 0
+              options[:skip] -= 1
+            else
+              begin
+                df.write Enter
+                data = ""
+                catch :break do
+                  while true
+                    begin
+                      IO.select([df], nil, nil, 1)
+                      data << df.read_available_nonblock
+                      df.write DownArrow
+                    rescue IO::WaitReadable
+                      throw :break
+                    end
+                  end
+                end
+
+                write_page type, data
+
+              ensure
+                df.write Escape
+                df.read_available
+              end
+
+              options[:limit] -= 1
+              throw :limit_reached if options[:limit] <= 0
+            end
+            df.write DownArrow
+            text = df.read_available
+          end
+
+        ensure
+          df.write Escape
+          df.read_available
+        end
+
+        df.write DownArrow
+        df.read_available
+
+        throw :limit_reached if options[:section] == 0
+      end
+    ensure
+      df.write Escape
+      df.read_available
+      df.write UpArrow
+      df.read_available
+      df.write Enter
       df.read_available
 
-      break if options[:section] == 0
+      p $fault_data if $fault_data
     end
-  ensure
-    df.write Escape
-    df.read_available
-    df.write UpArrow
-    df.read_available
-    df.write Enter
-    df.read_available
-
-    p $fault_data if $fault_data
   end
 end

@@ -109,8 +109,9 @@ EOF
 
     print_accum = proc do
       line_accum.strip!
+
       if first_text_printed
-        line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted)\s+((the\s+[a-z\s\-]+)?([A-Z][^\.]*?)|an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+        line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted|married)\s+((the\s+[a-z\s\-]+)?([A-Z][^\.]*?)|an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $8}" if $8
           in_site = ""
@@ -120,8 +121,16 @@ EOF
           else
             ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{in_site}.#{$11}"
           end
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
+        line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\.\z/ do
+          ", #{$1}#{link.call "fig", $2}'s #{$3} #{$4}#{link.call "fig", $5}."
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|a\s+lord|a\s+lady|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2} became #{$3} of #{link.call "ent", $4}."
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+of\s+([A-Z][^\.]*?)\s+(created\s+the\s+position\s+of\s+[a-z\s\-]+\s+as\s+a\s+matter\s+of\s+course)\.\z/ do
+          ", #{$1}#{link.call "fig", $2} of #{link.call "ent", $3} #{$4}."
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+ruled\s+from\s+([A-Z][^\.]*?)\s+of\s+(The\s+[A-Z][^\.]*?)\s+in\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{$1}#{link.call "fig", $2} ruled from #{link.call "site", $3} of #{link.call "ent", $4} in #{link.call "site", $5}."
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+(accepted|rejected)\s+an\s+offer\s+of\s+peace\s+from\s+([A-Z][^\.]*?)\.\z/ do
+          ", #{link.call "ent", $1} #{$2} an offer of peace from #{link.call "ent", $3}."
         end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
           ", #{link.call "fig", $1} fooled #{link.call "ent", $2} into believing #{$3} was #{link.call "fig", $4}."
         end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+(The\s+[A-Z][^\.]*?)\s+(of\s+(The\s+[A-Z][^\.]*?)\s+)?at\s+([A-Z][^\.]*?)\.\s+(The\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+led\s+the\s+attack(,\s+and\s+the\s+defenders\s+were\s+led\s+by\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?))?\.\z/ do
@@ -130,9 +139,9 @@ EOF
           and_the_defenders = ""
           and_the_defenders = ", and the defenders were led by #{$9}#{link.call "fig", $10}" if $10
           ", #{link.call "ent", $1} attacked #{link.call "site", $2} #{of_ent}at #{link.call "site", $5}. #{$6}#{link.call "fig", $7} led the attack#{and_the_defenders}."
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(settled\s+in|began\s+wandering)\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(settled\s+in|began\s+wandering|became\s+a\s+[a-z\s\-]+?\s+in|began\s+scouting\s+the\s+area\s+around)\s+([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2} #{$3} #{link.call "site", $4}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)(\s+of\s+(The\s+[A-Z][^\.]*?))?\s+(constructed|founded)\s+([A-Z][^\.]*?)(\s+in\s+([A-Z][^\.]*?))?\.\z/ do
+        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)(\s+of\s+(The\s+[A-Z][^\.]*?))?\s+(constructed|founded|launched\s+an\s+expedition\s+to\s+reclaim)\s+([A-Z][^\.]*?)(\s+in\s+([A-Z][^\.]*?))?\.\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $3}" if $3
           in_site = ""
@@ -164,8 +173,32 @@ EOF
       f.puts line_accum
     end
 
+    print_related = proc do
+      header_printed = false
+      case section
+      when /\ARelated\s+Entities\z/
+        line_accum.gsub! /\A(.+?)\s+\(/ do
+          "#{link.call "ent", $1} ("
+        end
+      when /\ARelated\s+Historical\s+Figures\z/
+        line_accum.gsub! /\A([^,]+?)(\s+the\s+[a-z\s\-]+)?,/ do
+          "#{link.call "fig", $1}#{$2},"
+        end
+      when /(?<!\sOther)\s+Kills?\z/
+        line_accum.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-]+)/ do
+          "#{link.call "fig", $1}#{$2}"
+        end
+      when /(?<!\sNotable)\s+Kills?\z/
+        line_accum.gsub! /\s+in\s+([A-Z].*?)\z/ do
+          " in #{link.call "site", $1}"
+        end
+      end
+      f.puts "<li>#{line_accum}</li>"
+    end
+
     data.each_line do |line|
       line.strip!
+      line_accum.gsub! /\s\s+/, " "
 
       if first and not line.empty?
         first = false
@@ -182,9 +215,12 @@ EOF
           if first_related_entity
             print_accum.call
             f.puts "</p>"
+            line_accum = ""
             first_related_entity = false
           else
+            print_related.call
             f.puts "</ul>"
+            line_accum = ""
           end
           f.puts
           f.puts "<h2 id=\"#{line[/\ARelated.*\z|((Other|Notable)\s+)?Kills?\z/].paramcase}\">#{line}</h2>"
@@ -192,26 +228,12 @@ EOF
           section = line
           header_printed = true
         elsif !line.empty?
-          header_printed = false
-          case section
-          when /\ARelated\s+Entities\z/
-            line.gsub! /\A(.+?)\s+\(/ do
-              "#{link.call "ent", $1} ("
-            end
-          when /\ARelated\s+Historical\s+Figures\z/
-            line.gsub! /\A([^,]+?)(\s+the\s+[a-z\s\-]+)?,/ do
-              "#{link.call "fig", $1} #{$2},"
-            end
-          when /(?<!\sOther)\s+Kills?\z/
-            line.gsub! /\A(.*?)(\s+the\s+[a-z\s+\-]+)/ do
-              "#{link.call "fig", $1}#{$2}"
-            end
-          when /(?<!\sNotable)\s+Kills?\z/
-            line.gsub! /\s+in\s+([A-Z].*?)\z/ do
-              " in #{link.call "site", $1}"
-            end
+          if line[/\A[a-z]/]
+            line_accum << " " << line
+          else
+            print_related.call unless line_accum.empty?
+            line_accum = line
           end
-          f.puts "<li>#{line}</li>"
         end
       else
         if line.start_with? 'In '
@@ -226,8 +248,10 @@ EOF
       end
     end
     if related_entities_seen
+      print_related.call
       f.puts "</ul>"
     else
+      print_accum.call
       f.puts "</p>"
     end
     f.puts "</body>"

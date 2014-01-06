@@ -89,8 +89,9 @@ def write_page type, data
 <head>
 <meta charset="utf-8">
 <title>#{data[/^\s*(.*?)\s+(was\s+(a|the)|could\s+be\s+found\s+(with)?in)\s+/, 1]} (#{Types[type][:name]})</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="style.css">
-<script src="script.js"></script>
+<script src="script.js" async defer></script>
 </head>
 <body>
 <p>
@@ -121,7 +122,7 @@ EOF
           else
             ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{in_site}.#{$11}"
           end
-        line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2}'s #{$3} #{$4}#{link.call "fig", $5}."
         end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|a\s+lord|a\s+lady|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
           ", #{$1}#{link.call "fig", $2} became #{$3} of #{link.call "ent", $4}."

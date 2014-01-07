@@ -5,6 +5,11 @@ Enter     = "\n"
 UpArrow   = "8"
 DownArrow = "2"
 
+TheRace  = /the\s+[a-z\s\-]+/
+TTheRace = /The\s+[a-z\s\-]+/
+Name     = /[\p{Lu}\p{Lt}][^\.,]*?/
+TheName  = /The\s+#{Name}/
+
 options = {skip: 0, section: -1, limit: 1<<30}
 
 Types = {
@@ -112,7 +117,7 @@ EOF
       line_accum.strip!
 
       if first_text_printed
-        line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted|married)\s+((the\s+[a-z\s\-]+)?([A-Z][^\.]*?)|an?\s+[a-z\s\-]+?)(\s+of\s+(The\s+[A-Z][^\.]*?))?(\s+in\s+([A-Z][^\.]*?))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+        line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted|married)\s+(#{TheRace})?(#{Name})|an?\s+[a-z\s\-]+?)(\s+of\s+(#{TheName}))?(\s+in\s+(#{Name}))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $8}" if $8
           in_site = ""
@@ -122,33 +127,33 @@ EOF
           else
             ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{in_site}.#{$11}"
           end
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(#{TheRace})?(#{Name})\.\z/ do
           ", #{$1}#{link.call "fig", $2}'s #{$3} #{$4}#{link.call "fig", $5}."
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|a\s+lord|a\s+lady|the\s+[a-z\s\-]+?)\s+of\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+became\s+(a\s+hero\s+in\s+the\s+eyes|an\s+enemy|a\s+lord|a\s+lady|the\s+[a-z\s\-]+?)\s+of\s+(#{TheName})\.\z/ do
           ", #{$1}#{link.call "fig", $2} became #{$3} of #{link.call "ent", $4}."
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+of\s+([A-Z][^\.]*?)\s+(created\s+the\s+position\s+of\s+[a-z\s\-]+\s+as\s+a\s+matter\s+of\s+course)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+of\s+(#{TheName})\s+(created\s+the\s+position\s+of\s+[a-z\s\-]+\s+as\s+a\s+matter\s+of\s+course)\.\z/ do
           ", #{$1}#{link.call "fig", $2} of #{link.call "ent", $3} #{$4}."
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+ruled\s+from\s+([A-Z][^\.]*?)\s+of\s+(The\s+[A-Z][^\.]*?)\s+in\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+ruled\s+from\s+(#{TheName})\s+of\s+(#{TheName})\s+in\s+(#{Name})\.\z/ do
           ", #{$1}#{link.call "fig", $2} ruled from #{link.call "site", $3} of #{link.call "ent", $4} in #{link.call "site", $5}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+(accepted|rejected)\s+an\s+offer\s+of\s+peace\s+from\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheName})\s+(accepted|rejected)\s+an\s+offer\s+of\s+peace\s+from\s+(#{TheName})\.\z/ do
           ", #{link.call "ent", $1} #{$2} an offer of peace from #{link.call "ent", $3}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+fooled\s+([A-Z][^\.]*?)\s+into\s+believing\s+([a-z]+)\s+was\s+([A-Z][^\.]*?)\.\z/ do
-          ", #{link.call "fig", $1} fooled #{link.call "ent", $2} into believing #{$3} was #{link.call "fig", $4}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+attacked\s+(The\s+[A-Z][^\.]*?)\s+(of\s+(The\s+[A-Z][^\.]*?)\s+)?at\s+([A-Z][^\.]*?)\.\s+(The\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+led\s+the\s+attack(,\s+and\s+the\s+defenders\s+were\s+led\s+by\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?))?\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+fooled\s+(#{TheName})\s+into\s+believing\s+([a-z]+)\s+was\s+(#{Name})\.\z/ do
+          ", #{$1}#{link.call "fig", $2} fooled #{link.call "ent", $3} into believing #{$4} was #{link.call "fig", $5}."
+        end or line_accum.gsub! /,\s+(#{TheName})\s+attacked\s+(#{TheName})\s+(of\s+(#{TheName})\s+)?at\s+(#{Name})\.\s+(#{TTheRace})?(#{Name})\s+led\s+the\s+attack(,\s+and\s+the\s+defenders\s+were\s+led\s+by\s+(#{TheRace})?(#{Name}))?\.\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $4} " if $4
           and_the_defenders = ""
           and_the_defenders = ", and the defenders were led by #{$9}#{link.call "fig", $10}" if $10
           ", #{link.call "ent", $1} attacked #{link.call "site", $2} #{of_ent}at #{link.call "site", $5}. #{$6}#{link.call "fig", $7} led the attack#{and_the_defenders}."
-        end or line_accum.gsub! /,\s+(the\s+[a-z\s\-]+)?([A-Z][^\.]*?)\s+(settled\s+in|began\s+wandering|became\s+a\s+[a-z\s\-]+?\s+in|began\s+scouting\s+the\s+area\s+around)\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+(settled\s+in|began\s+wandering|became\s+a\s+[a-z\s\-]+?\s+in|began\s+scouting\s+the\s+area\s+around)\s+(#{Name})\.\z/ do
           ", #{$1}#{link.call "fig", $2} #{$3} #{link.call "site", $4}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)(\s+of\s+(The\s+[A-Z][^\.]*?))?\s+(constructed|founded|launched\s+an\s+expedition\s+to\s+reclaim)\s+([A-Z][^\.]*?)(\s+in\s+([A-Z][^\.]*?))?\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheName})(\s+of\s+(#{TheName}))?\s+(constructed|founded|launched\s+an\s+expedition\s+to\s+reclaim)\s+(#{Name})(\s+in\s+(#{Name}))?\.\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $3}" if $3
           in_site = ""
           in_site = " in #{link.call "site", $7}" if $7
           ", #{link.call "ent", $1}#{of_ent} #{$4} #{link.call "site", $5}#{in_site}."
-        end or line_accum.gsub! /,\s+([A-Z][^\.]*?)\s+defeated\s+([A-Z][^\.]*?)\s+and\s+(pillaged)\s+([A-Z][^\.]*?)\.\z/ do
+        end or line_accum.gsub! /,\s+(#{TheName})\s+defeated\s+(#{TheName})\s+and\s+(pillaged)\s+(#{Name})\.\z/ do
           ", #{link.call "ent", $1} defeated #{link.call "ent", $2} and #{$3} #{link.call "site", $4}."
         end
       else
@@ -183,7 +188,7 @@ EOF
           "#{link.call "ent", $1} ("
         end
       when /\ARelated\s+Historical\s+Figures\z/
-        line_accum.gsub! /\A([^,]+?)(\s+the\s+[a-z\s\-]+)?,/ do
+        line_accum.gsub! /\A([^,]+?)(\s+#{TheRace})?,/ do
           "#{link.call "fig", $1}#{$2},"
         end
       when /(?<!\sOther)\s+Kills?\z/

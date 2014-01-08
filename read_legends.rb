@@ -117,7 +117,7 @@ EOF
       line_accum.strip!
 
       if first_text_printed
-        line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted|married)\s+(#{TheRace})?(#{Name})|an?\s+[a-z\s\-]+?)(\s+of\s+(#{TheName}))?(\s+in\s+(#{Name}))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
+        line_accum.gsub! /,\s+(#{TheRace})?(#{Name})\s+(struck\s+down|shot\s+and\s+killed|attacked|was\s+struck\s+down\s+by|was\s+shot\s+and\s+killed\s+by|devoured|ambushed|fought\s+with|happened\s+upon|confronted|married)\s+((#{TheRace})?(#{Name})|an?\s+[a-z\s\-]+?)(\s+of\s+(#{TheName}))?(\s+in\s+(#{Name}))?\.(\s+While\s+defeated,\s+the\s+latter\s+escaped\s+unscathed\.)?\z/ do
           of_ent = ""
           of_ent = " of #{link.call "ent", $8}" if $8
           in_site = ""

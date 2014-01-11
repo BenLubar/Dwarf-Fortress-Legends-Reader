@@ -123,9 +123,9 @@ EOF
           in_site = ""
           in_site = " in #{link.call "site", $11}" if $11
           if $5
-            ", #{$1}#{link.call "fig", $2} #{$3} #{$5}#{link.call "fig", $6}#{of_ent}#{$10}#{in_site}.#{$12}"
+            ", #{$1}#{link.call "fig", $2} #{$3} #{$5}#{link.call "fig", $6}#{of_ent}#{$9}#{in_site}.#{$12}"
           else
-            ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{$10}#{in_site}.#{$12}"
+            ", #{$1}#{link.call "fig", $2}  #{$3} #{$4}#{of_ent}#{$9}#{in_site}.#{$12}"
           end
         end or line_accum.gsub! /,\s+(#{TheRace})?(#{Name})'s\s+([a-z\s\-]+\s+was\s+[a-z\s\-]+\s+by)\s+(#{TheRace})?(#{Name})\.\z/ do
           ", #{$1}#{link.call "fig", $2}'s #{$3} #{$4}#{link.call "fig", $5}."

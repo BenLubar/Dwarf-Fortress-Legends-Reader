@@ -265,6 +265,14 @@ EOF
     f.puts "</html>"
   end
   $fault_data = nil
+rescue => err
+  open "fault_#{Time.now.to_i}", 'w' do |io|
+    io.puts $fault_data.inspect
+    io.puts
+    io.puts err.inspect
+    io.puts err.backtrace.join("\n")
+  end
+  $fault_data = nil
 end
 
 IO.popen('../df_linux/df', 'r+') do |df|
